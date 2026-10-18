@@ -74,15 +74,23 @@
     <string name="export_no_records">There are no records to export.</string>
     <string name="export_failed">Export failed.</string>
     <string name="backup_json">Back up (JSON)</string>
-    <string name="backup_saved">Backup saved: %1$d sorties, %2$d licenses.</string>
     <string name="restore_json">Restore from backup</string>
     <string name="restore_title">Restore backup?</string>
-    <string name="restore_summary">This backup contains %1$d sorties and %2$d licenses.\n\nMerge adds them to your current data (same IDs are overwritten). Replace deletes everything first.</string>
+    <string name="backup_saved">Backup saved: %1$s, %2$s.</string>
+    <string name="restore_done">Restored %1$s and %2$s.</string>
+    <plurals name="n_sorties">
+        <item quantity="one">%1$d sortie</item>
+        <item quantity="other">%1$d sorties</item>
+    </plurals>
+    <plurals name="n_licenses">
+        <item quantity="one">%1$d license</item>
+        <item quantity="other">%1$d licenses</item>
+    </plurals>
+    <string name="restore_summary">This backup contains %1$s and %2$s.\n\nMerge adds them to your current data (same IDs are overwritten). Replace deletes everything first.</string>
     <string name="restore_merge">Merge</string>
     <string name="restore_replace">Replace</string>
     <string name="restore_replace_confirm_title">Replace all data?</string>
     <string name="restore_replace_confirm_body">All current sorties, BA checks and licenses on this device will be deleted and replaced by the backup. This cannot be undone.</string>
-    <string name="restore_done">Restored %1$d sorties and %2$d licenses.</string>
 
     <!-- Licenses -->
     <string name="licenses_title">Certifications</string>

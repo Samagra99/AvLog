@@ -34,7 +34,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -54,7 +54,7 @@ import com.samtech.avlog.ui.theme.severityColors
 @Composable
 fun DutyScreen(viewModel: DutyViewModel, snackbarHostState: SnackbarHostState) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val resources = LocalContext.current.resources
+    val resources = LocalResources.current
     var editing by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(viewModel) {
@@ -173,7 +173,7 @@ private fun BaCheckCard(validBaTime: Long?, onConfirm: () -> Unit) {
 @Composable
 private fun FdtlAlertCard(status: FdtlStatus) {
     val colors = severityColors(status.severity)
-    val resources = LocalContext.current.resources
+    val resources = LocalResources.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = colors.container, contentColor = colors.onContainer),

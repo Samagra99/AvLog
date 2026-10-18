@@ -57,6 +57,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -81,7 +82,7 @@ import java.time.ZoneOffset
 fun RecordsScreen(viewModel: RecordsViewModel, snackbarHostState: SnackbarHostState) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val resources = context.resources
+    val resources = LocalResources.current
 
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
@@ -120,10 +121,10 @@ fun RecordsScreen(viewModel: RecordsViewModel, snackbarHostState: SnackbarHostSt
                 is RecordsEvent.EditFailed -> snackbarHostState.showSnackbar(resources.editResultMessage(event.result))
                 RecordsEvent.EditSaved -> editingId = null
                 is RecordsEvent.BackupSaved -> snackbarHostState.showSnackbar(
-                    resources.getString(R.string.backup_saved, event.sorties, event.licenses)
+                    resources.getString(R.string.backup_saved, resources.countSorties(event.sorties), resources.countLicenses(event.licenses))
                 )
                 is RecordsEvent.RestoreDone -> snackbarHostState.showSnackbar(
-                    resources.getString(R.string.restore_done, event.sorties, event.licenses)
+                    resources.getString(R.string.restore_done, resources.countSorties(event.sorties), resources.countLicenses(event.licenses))
                 )
                 is RecordsEvent.Failed -> snackbarHostState.showSnackbar(
                     resources.getString(R.string.operation_failed, event.message ?: "")
@@ -250,7 +251,7 @@ fun RecordsScreen(viewModel: RecordsViewModel, snackbarHostState: SnackbarHostSt
             AlertDialog(
                 onDismissRequest = viewModel::cancelRestore,
                 title = { Text(stringResource(R.string.restore_title)) },
-                text = { Text(stringResource(R.string.restore_summary, data.sorties.size, data.licenses.size)) },
+                text = { Text(stringResource(R.string.restore_summary, resources.countSorties(data.sorties.size), resources.countLicenses(data.licenses.size))) },
                 confirmButton = {
                     TextButton(onClick = { viewModel.confirmRestore(ImportMode.MERGE) }) { Text(stringResource(R.string.restore_merge)) }
                 },
@@ -436,3 +437,6 @@ fun EmptyState(modifier: Modifier = Modifier) {
     }
 }
 
+
+private fun android.content.res.Resources.countSorties(n: Int) = getQuantityString(R.plurals.n_sorties, n, n)
+private fun android.content.res.Resources.countLicenses(n: Int) = getQuantityString(R.plurals.n_licenses, n, n)

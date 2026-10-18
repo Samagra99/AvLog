@@ -47,7 +47,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -70,7 +70,7 @@ fun LicenseScreen(
     onLicenseSaved: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val resources = LocalContext.current.resources
+    val resources = LocalResources.current
     // null = closed, "" = add, otherwise the id being edited
     var dialogFor by rememberSaveable { mutableStateOf<String?>(null) }
 

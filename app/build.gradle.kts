@@ -66,11 +66,6 @@ room {
     schemaDirectory("$projectDir/schemas")
 }
 
-ksp {
-    // Disabling Kotlin code generation to fix "unexpected jvm signature V" error
-    // Room will still work correctly using Java code generation
-    arg("room.generateKotlin", "false")
-}
 
 dependencies {
     implementation(libs.androidx.core.ktx)
@@ -93,7 +88,7 @@ dependencies {
     constraints {
         // Navigation pins kotlinx-serialization-core 1.7.3 in the app; room-testing's schema reader
         // (androidTest) needs 1.8.x, and the app APK's version wins at test runtime.
-        implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.8.1")
+        implementation(libs.kotlinx.serialization.core)
     }
 
     testImplementation(libs.junit)

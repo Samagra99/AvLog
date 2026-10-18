@@ -13,3 +13,13 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Signing material (P8.6) - never commit
+*.jks
+*.keystore
+keystore.properties
+
+# Machine-specific IDE state; shared code style and run configurations stay tracked
+/.idea/*
+!/.idea/codeStyles/
+!/.idea/runConfigurations.xml

@@ -27,14 +27,12 @@ object ExpiryNotifications {
     private const val WORK_NAME = "LicenseCheck"
 
     fun createChannel(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                context.getString(R.string.notif_channel_name),
-                NotificationManager.IMPORTANCE_HIGH,
-            )
-            context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
-        }
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            context.getString(R.string.notif_channel_name),
+            NotificationManager.IMPORTANCE_HIGH,
+        )
+        context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
     /** Daily check, no battery constraint (safety alerts must not be deferred). UPDATE replaces old constraints. */
