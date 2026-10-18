@@ -6,6 +6,7 @@ import androidx.room.TypeConverters
 import com.samtech.avlog.data.DateConverters
 import com.samtech.avlog.data.DutyDao
 import com.samtech.avlog.data.DutyDayEntity
+import com.samtech.avlog.data.DutyRecordV4Backup
 import com.samtech.avlog.data.LicenseDao
 import com.samtech.avlog.data.LicenseEntity
 import com.samtech.avlog.data.SortieEntity
@@ -17,7 +18,7 @@ import com.samtech.avlog.data.SortieEntity
  * Kept in this package because the exported schema folder is keyed by this class's fully-qualified name.
  */
 @Database(
-    entities = [DutyDayEntity::class, SortieEntity::class, LicenseEntity::class],
+    entities = [DutyDayEntity::class, SortieEntity::class, LicenseEntity::class, DutyRecordV4Backup::class],
     version = 5,
 )
 @TypeConverters(DateConverters::class)

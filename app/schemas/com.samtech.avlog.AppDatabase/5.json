@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 5,
-    "identityHash": "b6a265c2b0a3c0a22795e6ded1d870b2",
+    "identityHash": "1c5e5672747ce9f30d980c16affbc98c",
     "entities": [
       {
         "tableName": "duty_days",
@@ -124,11 +124,52 @@
             "id"
           ]
         }
+      },
+      {
+        "tableName": "duty_records_v4_backup",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`date` TEXT NOT NULL, `baCheckDone` INTEGER NOT NULL, `baCheckTime` INTEGER, `dayTotalSeconds` INTEGER NOT NULL, `sortiesJson` TEXT NOT NULL, PRIMARY KEY(`date`))",
+        "fields": [
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "baCheckDone",
+            "columnName": "baCheckDone",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "baCheckTime",
+            "columnName": "baCheckTime",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "dayTotalSeconds",
+            "columnName": "dayTotalSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortiesJson",
+            "columnName": "sortiesJson",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "date"
+          ]
+        }
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b6a265c2b0a3c0a22795e6ded1d870b2')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1c5e5672747ce9f30d980c16affbc98c')"
     ]
   }
 }

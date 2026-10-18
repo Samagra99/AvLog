@@ -55,3 +55,17 @@ class DateConverters {
     @TypeConverter
     fun toLocalDate(value: String?): LocalDate? = value?.let(LocalDate::parse)
 }
+
+/**
+ * The untouched v4 `duty_records` table, renamed by Migration4To5 and kept for one release as a safety net.
+ * It must be declared because Room rejects unknown tables after a migration. Remove this entity and add a
+ * v5->v6 migration with `DROP TABLE duty_records_v4_backup` in the next schema version.
+ */
+@Entity(tableName = "duty_records_v4_backup")
+data class DutyRecordV4Backup(
+    @PrimaryKey val date: String,
+    val baCheckDone: Boolean,
+    val baCheckTime: Long?,
+    val dayTotalSeconds: Long,
+    val sortiesJson: String,
+)

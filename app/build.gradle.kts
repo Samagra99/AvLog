@@ -90,6 +90,12 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
+    constraints {
+        // Navigation pins kotlinx-serialization-core 1.7.3 in the app; room-testing's schema reader
+        // (androidTest) needs 1.8.x, and the app APK's version wins at test runtime.
+        implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.8.1")
+    }
+
     testImplementation(libs.junit)
     testImplementation(libs.org.json)
     testImplementation(libs.kotlinx.coroutines.test)
