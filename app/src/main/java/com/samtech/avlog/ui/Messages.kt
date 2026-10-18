@@ -26,13 +26,13 @@ fun Resources.fdtlWarningMessage(status: FdtlStatus): String {
     val consumed = Formatters.hMm(status.consumedSeconds, roundUp = true)
     val limit = Formatters.hMm(status.limitSeconds, roundUp = false)
     return if (status.severity == Severity.EXCEEDED) {
-        getString(R.string.fdtl_exceeded, status.window.days, consumed, limit)
+        getString(R.string.fdtl_exceeded, Formatters.num(status.window.days), consumed, limit)
     } else {
-        getString(R.string.fdtl_approaching, status.window.days, consumed, limit,
+        getString(R.string.fdtl_approaching, Formatters.num(status.window.days), consumed, limit,
             Formatters.hMm(status.remainingSeconds, roundUp = false))
     }
 }
 
 @Composable
 @ReadOnlyComposable
-fun windowLabel(days: Int): String = stringResource(R.string.fdtl_window_label, days)
+fun windowLabel(days: Int): String = stringResource(R.string.fdtl_window_label, Formatters.num(days))

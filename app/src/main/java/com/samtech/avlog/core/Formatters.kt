@@ -18,7 +18,13 @@ object Formatters {
 
     fun utcTime(epochMillis: Long): String = utcHhMm.format(Instant.ofEpochMilli(epochMillis))
 
-    fun utcClock(instant: Instant): String = utcHhMmSs.format(instant) + " Z"
+    fun utcClock(instant: Instant): String = ltr(utcHhMmSs.format(instant) + " Z")
+
+    /** Wraps in a Unicode LTR isolate so RTL locales don't reorder "18:42 – 03:00" or "12:00 Z". UI only. */
+    fun ltr(s: String): String = "\u2066$s\u2069"
+
+    /** Latin digits for counts and labels shown next to times (avoids mixed digit systems). */
+    fun num(n: Number): String = n.toString()
 
     fun isoDate(date: LocalDate): String = isoDate.format(date)
 

@@ -104,8 +104,11 @@ fun MainApp(pendingDestination: String? = null, onDestinationHandled: () -> Unit
     val licenseViewModel: LicenseViewModel = viewModel(factory = AvLogViewModels.Factory)
 
     // P5.5: ask for POST_NOTIFICATIONS once, in context (after the first license is saved).
-    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) ExpiryNotifications.checkNow(context)
+    }
     val onLicenseSaved: () -> Unit = {
+        ExpiryNotifications.checkNow(context)
         val settings = context.appContainer.settings
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             !settings.askedNotificationPermission &&

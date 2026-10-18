@@ -12,6 +12,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.samtech.avlog.ExpiryWorker
@@ -40,6 +42,16 @@ object ExpiryNotifications {
         val request = PeriodicWorkRequestBuilder<ExpiryWorker>(24, TimeUnit.HOURS).build()
         WorkManager.getInstance(context)
             .enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
+    }
+
+    /**
+     * Immediate one-off check (app start, permission just granted). Safe to repeat: ExpiryEvaluator never
+     * notifies the same threshold twice.
+     */
+    fun checkNow(context: Context) {
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            "$WORK_NAME-now", ExistingWorkPolicy.REPLACE, OneTimeWorkRequestBuilder<ExpiryWorker>().build()
+        )
     }
 
     fun canNotify(context: Context): Boolean {

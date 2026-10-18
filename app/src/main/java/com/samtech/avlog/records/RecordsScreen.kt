@@ -298,7 +298,7 @@ fun FdtlDashboard(stats: List<FdtlStatus>, planning: Boolean) {
                 colors = CardDefaults.cardColors(containerColor = colors.container, contentColor = colors.onContainer)
             ) {
                 Column(modifier = Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(stringResource(R.string.fdtl_window_label, stat.window.days), style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.fdtl_window_label, Formatters.num(stat.window.days)), style = MaterialTheme.typography.labelMedium)
                     CircularProgressIndicator(
                         progress = { stat.fraction.coerceIn(0f, 1f) },
                         modifier = Modifier.size(40.dp).padding(vertical = 4.dp),
@@ -389,7 +389,7 @@ fun SortieRow(index: Int, dateText: String, sortie: SortieEntity, onEdit: () -> 
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    stringResource(R.string.sortie_n, index),
+                    stringResource(R.string.sortie_n, Formatters.num(index)),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -403,7 +403,7 @@ fun SortieRow(index: Int, dateText: String, sortie: SortieEntity, onEdit: () -> 
                 }
             }
             Text(
-                text = "${Formatters.utcTime(sortie.blockOff)} – ${sortie.blockOn?.let { Formatters.utcTime(it) } ?: "---"}",
+                text = Formatters.ltr("${Formatters.utcTime(sortie.blockOff)} – ${sortie.blockOn?.let { Formatters.utcTime(it) } ?: "---"}"),
                 style = MaterialTheme.typography.bodyMedium
             )
         }
@@ -414,12 +414,12 @@ fun SortieRow(index: Int, dateText: String, sortie: SortieEntity, onEdit: () -> 
             modifier = Modifier.padding(horizontal = 4.dp)
         )
         IconButton(onClick = onEdit) {
-            Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit_sortie_cd, index, dateText))
+            Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit_sortie_cd, Formatters.num(index), dateText))
         }
         IconButton(onClick = onDelete) {
             Icon(
                 Icons.Default.DeleteSweep,
-                contentDescription = stringResource(R.string.delete_sortie_cd, index, dateText),
+                contentDescription = stringResource(R.string.delete_sortie_cd, Formatters.num(index), dateText),
                 tint = MaterialTheme.colorScheme.error,
             )
         }

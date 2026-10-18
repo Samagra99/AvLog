@@ -34,7 +34,7 @@ class FormattersTest {
             Locale.setDefault(Locale.forLanguageTag("ar-EG"))
             assertEquals("01:02:03", Formatters.hms(3723))
             assertEquals("00:00", Formatters.utcTime(0))
-            assertEquals("00:00:05 Z", Formatters.utcClock(Instant.ofEpochSecond(5)))
+            assertEquals("\u206600:00:05 Z\u2069", Formatters.utcClock(Instant.ofEpochSecond(5)))
         } finally {
             Locale.setDefault(previous)
         }

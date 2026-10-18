@@ -31,6 +31,7 @@ class AvLogApp : Application() {
         // P5.5: channel + periodic check regardless of notification permission.
         ExpiryNotifications.createChannel(this)
         ExpiryNotifications.schedule(this)
+        ExpiryNotifications.checkNow(this)
         container.appScope.launch { migrateLegacyPrefs() }
     }
 
