@@ -40,6 +40,7 @@ ksp {
     // Disabling Kotlin code generation to fix "unexpected jvm signature V" error
     // Room will still work correctly using Java code generation
     arg("room.generateKotlin", "false")
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {

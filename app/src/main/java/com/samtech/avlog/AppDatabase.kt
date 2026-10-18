@@ -24,7 +24,6 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "duty_tracker_db"
                 )
-                .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance
                 instance
