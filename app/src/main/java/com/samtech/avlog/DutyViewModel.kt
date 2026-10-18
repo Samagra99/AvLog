@@ -1,10 +1,8 @@
 package com.samtech.avlog
 
-import android.util.Log
-import java.time.LocalDate
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.samtech.avlog.FDTLManager.calculateCumulativeHours
 import com.samtech.avlog.ui.theme.Converters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -15,46 +13,107 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
+import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
-class DutyViewModel(private val dutyDao: DutyDao) : ViewModel() {
+class DutyViewModel(
+    private val dutyDao: DutyDao,
+    context: Context
+) : ViewModel() {
+
+    private val prefs = context.getSharedPreferences("duty_prefs", Context.MODE_PRIVATE)
+
+    companion object {
+        private const val TWELVE_HOURS_MS = 12 * 60 * 60 * 1000L // 12 hours in milliseconds
+    }
+
+    private fun isBaCheckValid(baCheckTime: Long?): Boolean {
+        if (baCheckTime == null || baCheckTime <= 0L) return false
+        val elapsed = System.currentTimeMillis() - baCheckTime
+        return elapsed in 0 until TWELVE_HOURS_MS
+    }
+
+    private fun getValidBaCheckTime(): Long? {
+        val savedTime = prefs.getLong("last_ba_check_time", 0L)
+        return if (isBaCheckValid(savedTime)) savedTime else null
+    }
+
+    private fun loadInitialDayRecord(): DayRecord {
+        val today = LocalDate.now(ZoneOffset.UTC).toString()
+        val validBaTime = getValidBaCheckTime()
+        val isBaDone = validBaTime != null
+        return DayRecord(
+            date = today,
+            baCheckDone = isBaDone,
+            baCheckTime = if (isBaDone) validBaTime else null
+        )
+    }
 
     private val _currentUtcTime = MutableStateFlow(formatTimeUtc(System.currentTimeMillis()))
     val currentUtcTime = _currentUtcTime.asStateFlow()
-    // The current state of our duty day
-    private val _dayRecord = MutableStateFlow(DayRecord(date = LocalDate.now(ZoneOffset.UTC).toString()))
+
+    // The current state of our duty day - initialized immediately from persistent storage
+    private val _dayRecord = MutableStateFlow(loadInitialDayRecord())
     val dayRecord = _dayRecord.asStateFlow()
 
     private val _fdtlWarning = MutableStateFlow<String?>(null)
     val fdtlWarning = _fdtlWarning.asStateFlow()
 
-
     init {
         viewModelScope.launch {
-            dutyDao.getRecordByDate(LocalDate.now(ZoneOffset.UTC).toString()).collect { entity ->
-                if (entity != null) {
-                    val sorties = Converters().toSortieList(entity.sortiesJson)
-                    _dayRecord.value = DayRecord(
-                        date = entity.date,
-                        baCheckDone = entity.baCheckDone,
-                        baCheckTime = entity.baCheckTime,
-                        sorties = sorties
-                    )
+            dutyDao.getAllRecords().collect { records ->
+                val today = LocalDate.now(ZoneOffset.UTC).toString()
+                val todayRecord = records.find { it.date == today }
 
-                    // CHECK FOR ACTIVE TIMER:
-                    val activeSortie = sorties.find { it.blockOn == null }
-                    if (activeSortie != null) {
-                        startTimer() // Resume the ticker if we find a flight in progress
-                    }
+                val validBaTimeFromPrefs = getValidBaCheckTime()
+                val validBaRecordFromDb = records
+                    .filter { it.baCheckDone && isBaCheckValid(it.baCheckTime) }
+                    .maxByOrNull { it.baCheckTime ?: 0L }
+
+                val validBaTime = validBaTimeFromPrefs ?: validBaRecordFromDb?.baCheckTime
+                val isBaDone = validBaTime != null
+
+                val sorties = if (todayRecord != null) {
+                    Converters().toSortieList(todayRecord.sortiesJson)
+                } else {
+                    emptyList()
+                }
+
+                _dayRecord.value = DayRecord(
+                    date = today,
+                    baCheckDone = isBaDone,
+                    baCheckTime = if (isBaDone) validBaTime else null,
+                    sorties = sorties
+                )
+
+                // CHECK FOR ACTIVE TIMER:
+                val activeSortie = sorties.find { it.blockOn == null }
+                if (activeSortie != null) {
+                    startTimer() // Resume the ticker if we find a flight in progress
                 }
             }
         }
+
         viewModelScope.launch(Dispatchers.Default) {
             while (isActive) {
-                _currentUtcTime.value = formatTimeUtc(System.currentTimeMillis())
+                val now = System.currentTimeMillis()
+                _currentUtcTime.value = formatTimeUtc(now)
+
+                // Expire BA check automatically if 12 hours have elapsed
+                val currentRecord = _dayRecord.value
+                if (currentRecord.baCheckDone) {
+                    val baTime = currentRecord.baCheckTime
+                    if (!isBaCheckValid(baTime)) {
+                        _dayRecord.value = currentRecord.copy(
+                            baCheckDone = false,
+                            baCheckTime = null
+                        )
+                    }
+                }
+
                 delay(1000) // Update every second
             }
         }
@@ -67,10 +126,36 @@ class DutyViewModel(private val dutyDao: DutyDao) : ViewModel() {
     private var timerJob: Job? = null
 
     fun confirmBACheck() {
+        val now = System.currentTimeMillis()
+        prefs.edit().putLong("last_ba_check_time", now).commit()
+
         _dayRecord.value = _dayRecord.value.copy(
             baCheckDone = true,
-            baCheckTime = System.currentTimeMillis()
+            baCheckTime = now
         )
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val dateToday = LocalDate.now(ZoneOffset.UTC).toString()
+            val allRecords = dutyDao.getAllRecordsOnce()
+            val existingRecord = allRecords.find { it.date == dateToday }
+
+            val updatedEntity = if (existingRecord != null) {
+                existingRecord.copy(
+                    baCheckDone = true,
+                    baCheckTime = now
+                )
+            } else {
+                DayRecordEntity(
+                    date = dateToday,
+                    baCheckDone = true,
+                    baCheckTime = now,
+                    dayTotalSeconds = 0L,
+                    sortiesJson = Converters().fromSortieList(emptyList())
+                )
+            }
+
+            dutyDao.insertRecord(updatedEntity)
+        }
     }
 
     fun clearWarning() { _fdtlWarning.value = null }
@@ -163,30 +248,29 @@ class DutyViewModel(private val dutyDao: DutyDao) : ViewModel() {
 
     fun deleteSortie(date: String, sortieId: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            // 1. Get the current record from the database
-            // (Assuming you have a way to get the specific record,
-            // or you can use the one already in your StateFlow)
-            val currentRecord = _dayRecord.value
+            val allRecords = dutyDao.getAllRecordsOnce()
+            val targetRecord = allRecords.find { it.date == date } ?: return@launch
 
-            // 2. Filter out the specific sortie
-            val updatedSorties = currentRecord.sorties.filter { it.id != sortieId }
+            val sorties = Converters().toSortieList(targetRecord.sortiesJson)
+            val updatedSorties = sorties.filter { it.id != sortieId }
 
-            // 3. Recalculate the total day time
-            val newTotalSeconds = updatedSorties.sumOf {
-                if (it.blockOn != null) (it.blockOn - it.blockOff) / 1000 else 0L
+            if (updatedSorties.isEmpty()) {
+                dutyDao.deleteRecordByDate(date)
+            } else {
+                val newTotalSeconds = updatedSorties.sumOf {
+                    if (it.blockOn != null) (it.blockOn - it.blockOff) / 1000 else 0L
+                }
+
+                val updatedEntity = DayRecordEntity(
+                    date = targetRecord.date,
+                    baCheckDone = targetRecord.baCheckDone,
+                    baCheckTime = targetRecord.baCheckTime,
+                    dayTotalSeconds = newTotalSeconds,
+                    sortiesJson = Converters().fromSortieList(updatedSorties)
+                )
+
+                dutyDao.insertRecord(updatedEntity)
             }
-
-            // 4. Create the updated Entity
-            val updatedEntity = DayRecordEntity(
-                date = currentRecord.date,
-                baCheckDone = currentRecord.baCheckDone,
-                baCheckTime = currentRecord.baCheckTime,
-                dayTotalSeconds = newTotalSeconds,
-                sortiesJson = Converters().fromSortieList(updatedSorties)
-            )
-
-            // 5. Save back to Room
-            dutyDao.insertRecord(updatedEntity)
         }
     }
 }

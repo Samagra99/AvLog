@@ -18,12 +18,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
-fun DutyScreen(viewModel: DutyViewModel = viewModel()) {
+fun DutyScreen(viewModel: DutyViewModel) {
     val dayRecord by viewModel.dayRecord.collectAsStateWithLifecycle()
     val elapsed by viewModel.elapsedSeconds.collectAsState()
     val utcClock by viewModel.currentUtcTime.collectAsState()

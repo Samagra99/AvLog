@@ -88,7 +88,7 @@ fun MainApp() {
     val dutyViewModel: DutyViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return DutyViewModel(dutyDao) as T
+                return DutyViewModel(dutyDao, context.applicationContext) as T
             }
         }
     )

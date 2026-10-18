@@ -21,6 +21,11 @@ import java.time.ZoneOffset
 class RecordsViewModel(private val dutyDao: DutyDao) : ViewModel() {
     // This Flow will automatically emit new lists whenever the database changes
     val allRecords: StateFlow<List<DayRecordEntity>> = dutyDao.getAllRecords()
+        .map { records ->
+            records.filter { record ->
+                Converters().toSortieList(record.sortiesJson).isNotEmpty()
+            }
+        }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -39,30 +44,35 @@ class RecordsViewModel(private val dutyDao: DutyDao) : ViewModel() {
 
     fun deleteSortie(date: String, sortieId: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            // 1. Get the current records
-            val records = allRecords.value
+            // 1. Get current records directly from database
+            val records = dutyDao.getAllRecordsOnce()
             val targetRecord = records.find { it.date == date } ?: return@launch
 
             // 2. Filter out the specific sortie
             val sorties = Converters().toSortieList(targetRecord.sortiesJson)
             val updatedSorties = sorties.filter { it.id != sortieId }
 
-            // 3. Recalculate the total day time
-            val newTotalSeconds = updatedSorties.sumOf {
-                if (it.blockOn != null) (it.blockOn - it.blockOff) / 1000 else 0L
+            if (updatedSorties.isEmpty()) {
+                // If no sorties remain, delete the card for this date from Room
+                dutyDao.deleteRecordByDate(date)
+            } else {
+                // 3. Recalculate the total day time
+                val newTotalSeconds = updatedSorties.sumOf {
+                    if (it.blockOn != null) (it.blockOn - it.blockOff) / 1000 else 0L
+                }
+
+                // 4. Create the updated Entity
+                val updatedEntity = DayRecordEntity(
+                    date = targetRecord.date,
+                    baCheckDone = targetRecord.baCheckDone,
+                    baCheckTime = targetRecord.baCheckTime,
+                    dayTotalSeconds = newTotalSeconds,
+                    sortiesJson = Converters().fromSortieList(updatedSorties)
+                )
+
+                // 5. Save back to Room
+                dutyDao.insertRecord(updatedEntity)
             }
-
-            // 4. Create the updated Entity
-            val updatedEntity = DayRecordEntity(
-                date = targetRecord.date,
-                baCheckDone = targetRecord.baCheckDone,
-                baCheckTime = targetRecord.baCheckTime,
-                dayTotalSeconds = newTotalSeconds,
-                sortiesJson = Converters().fromSortieList(updatedSorties)
-            )
-
-            // 5. Save back to Room
-            dutyDao.insertRecord(updatedEntity)
         }
     }
 

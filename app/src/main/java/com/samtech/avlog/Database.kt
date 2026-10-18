@@ -30,8 +30,12 @@ interface DutyDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRecord(record: DayRecordEntity)
+
     @Query("SELECT * FROM duty_records")
     suspend fun getAllRecordsOnce(): List<DayRecordEntity>
+
+    @Query("DELETE FROM duty_records WHERE date = :date")
+    suspend fun deleteRecordByDate(date: String)
 }
 
 @Entity(tableName = "licenses")
