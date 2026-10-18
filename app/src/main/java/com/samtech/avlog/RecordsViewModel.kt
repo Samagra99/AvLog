@@ -6,7 +6,10 @@ import android.util.Log
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.samtech.avlog.FDTLManager.calculateCumulativeHours
+import com.samtech.avlog.core.Clock
+import com.samtech.avlog.core.utcToday
+import com.samtech.avlog.fdtl.FdtlCalculator
+import com.samtech.avlog.fdtl.FdtlStatus
 import com.samtech.avlog.ui.theme.Converters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
@@ -16,9 +19,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
 import java.time.LocalDate
-import java.time.ZoneOffset
 
-class RecordsViewModel(private val dutyDao: DutyDao) : ViewModel() {
+class RecordsViewModel(private val dutyDao: DutyDao, private val clock: Clock) : ViewModel() {
     // This Flow will automatically emit new lists whenever the database changes
     val allRecords: StateFlow<List<DayRecordEntity>> = dutyDao.getAllRecords()
         .map { records ->
@@ -33,14 +35,11 @@ class RecordsViewModel(private val dutyDao: DutyDao) : ViewModel() {
         )
 
     val fdtlStats = allRecords.map { records ->
-        listOf(
-            FDTLStatus("7 Days", calculateCumulativeHours(records, 7), 35.0, "7D"),
-            FDTLStatus("14 Days", calculateCumulativeHours(records, 14), 65.0, "14D"),
-            FDTLStatus("28 Days", calculateCumulativeHours(records, 28), 100.0, "28D"),
-            FDTLStatus("90 Days", calculateCumulativeHours(records, 90), 300.0, "90D"),
-            FDTLStatus("1 Year", calculateCumulativeHours(records, 365), 1000.0, "365D")
-        )
+        FdtlCalculator.live(clock.utcToday(), FdtlCalculator.sumFrom(dailyTotals(records)))
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private fun dailyTotals(records: List<DayRecordEntity>): Map<LocalDate, Long> =
+        records.groupBy { LocalDate.parse(it.date) }.mapValues { (_, v) -> v.sumOf { it.dayTotalSeconds } }
 
     fun deleteSortie(date: String, sortieId: String) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -118,29 +117,6 @@ class RecordsViewModel(private val dutyDao: DutyDao) : ViewModel() {
         }
     }
 
-    fun calculateRemainingHours(allRecords: List<DayRecordEntity>, targetDate: LocalDate): List<FDTLStatus> {
-        val limits = mapOf(7 to 35.0, 14 to 65.0, 28 to 100.0, 90 to 300.0, 365 to 1000.0)
-
-        return limits.map { (days, limit) ->
-            // Look back from the TARGET date, not today
-            val cutoff = targetDate.minusDays(days.toLong())
-
-            val consumedSeconds = allRecords
-                .filter {
-                    val recordDate = LocalDate.parse(it.date)
-                    recordDate >= cutoff && recordDate < targetDate
-                }
-                .sumOf { it.dayTotalSeconds }
-
-            val consumedHours = consumedSeconds / 3600.0
-            val remaining = (limit - consumedHours).coerceAtLeast(0.0)
-
-            FDTLStatus(
-                period = "$days Days",
-                current = remaining, // In this mode, we display the 'Remaining' amount
-                limit = limit,
-                label = "${days}D"
-            )
-        }
-    }
+    fun calculateRemainingHours(allRecords: List<DayRecordEntity>, targetDate: LocalDate): List<FdtlStatus> =
+        FdtlCalculator.planning(targetDate, FdtlCalculator.sumFrom(dailyTotals(allRecords)))
 }

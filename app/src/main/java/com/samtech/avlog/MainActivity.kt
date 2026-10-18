@@ -66,9 +66,6 @@ enum class Screen(val route: String, val label: String, val icon: ImageVector) {
 fun MainApp() {
     val navController = rememberNavController()
     val context = LocalContext.current
-    val database = AppDatabase.getDatabase(context)
-    val dutyDao = database.dutyDao()
-    val licenseDao = database.licenseDao()
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -85,21 +82,8 @@ fun MainApp() {
         }
     }
 
-    val dutyViewModel: DutyViewModel = viewModel(
-        factory = object : ViewModelProvider.Factory {
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return DutyViewModel(dutyDao, context.applicationContext) as T
-            }
-        }
-    )
-
-    val licenseViewModel: LicenseViewModel = viewModel(
-        factory = object : ViewModelProvider.Factory {
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return LicenseViewModel(licenseDao) as T
-            }
-        }
-    )
+    val dutyViewModel: DutyViewModel = viewModel(factory = AvLogViewModels.Factory)
+    val licenseViewModel: LicenseViewModel = viewModel(factory = AvLogViewModels.Factory)
 
     var showAddLicenseDialog by remember { mutableStateOf(false) }
 
@@ -132,13 +116,7 @@ fun MainApp() {
         NavHost(navController, Screen.Duty.route, Modifier.padding(innerPadding)) {
             composable(Screen.Duty.route) { DutyScreen(dutyViewModel) }
             composable(Screen.Records.route) {
-                val recordsViewModel: RecordsViewModel = viewModel(
-                    factory = object : ViewModelProvider.Factory {
-                        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                            return RecordsViewModel(dutyDao) as T
-                        }
-                    }
-                )
+                val recordsViewModel: RecordsViewModel = viewModel(factory = AvLogViewModels.Factory)
                 RecordsScreen(recordsViewModel)
             }
             composable(Screen.Licenses.route) {

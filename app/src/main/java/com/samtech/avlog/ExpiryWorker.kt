@@ -14,7 +14,7 @@ import java.time.temporal.ChronoUnit
 
 class ExpiryWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
-        val database = AppDatabase.getDatabase(applicationContext)
+        val database = applicationContext.appContainer.database
         val licenses = database.licenseDao().getAllLicensesSync()
 
         licenses.forEach { license ->

@@ -161,13 +161,13 @@ fun RecordsScreen(viewModel: RecordsViewModel) {
 }
 
 @Composable
-fun FDTLDashboard(stats: List<FDTLStatus>) {
+fun FDTLDashboard(stats: List<com.samtech.avlog.fdtl.FdtlStatus>) {
     LazyRow(
         modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(stats) { stat ->
-            val progress = (stat.current / stat.limit).toFloat()
+            val progress = stat.fraction
             val color = when {
                 progress >= 1.0f -> Color.Red
                 progress >= 0.9f -> Color(0xFFFFA500) // Orange warning
@@ -182,7 +182,7 @@ fun FDTLDashboard(stats: List<FDTLStatus>) {
                     modifier = Modifier.padding(12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(stat.label, style = MaterialTheme.typography.labelSmall)
+                    Text(stat.window.label, style = MaterialTheme.typography.labelSmall)
                     CircularProgressIndicator(
                         progress = { progress.coerceAtMost(1f) },
                         modifier = Modifier.size(40.dp).padding(vertical = 4.dp),
@@ -190,11 +190,11 @@ fun FDTLDashboard(stats: List<FDTLStatus>) {
                         strokeWidth = 4.dp,
                     )
                     Text(
-                        "${stat.current.toInt()}h",
+                        com.samtech.avlog.core.Formatters.hMm(stat.consumedSeconds, roundUp = true),
                         fontWeight = FontWeight.Bold,
                         color = color
                     )
-                    Text("/${stat.limit.toInt()}", style = MaterialTheme.typography.labelSmall)
+                    Text("/${stat.window.limitHours}:00", style = MaterialTheme.typography.labelSmall)
                 }
             }
         }

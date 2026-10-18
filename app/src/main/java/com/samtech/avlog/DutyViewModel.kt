@@ -3,6 +3,11 @@ package com.samtech.avlog
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.samtech.avlog.core.Clock
+import com.samtech.avlog.core.Formatters
+import com.samtech.avlog.core.nowMillis
+import com.samtech.avlog.core.utcToday
+import com.samtech.avlog.fdtl.FdtlCalculator
 import com.samtech.avlog.ui.theme.Converters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -21,7 +26,8 @@ import java.util.TimeZone
 
 class DutyViewModel(
     private val dutyDao: DutyDao,
-    context: Context
+    context: Context,
+    private val clock: Clock,
 ) : ViewModel() {
 
     private val prefs = context.getSharedPreferences("duty_prefs", Context.MODE_PRIVATE)
@@ -32,7 +38,7 @@ class DutyViewModel(
 
     private fun isBaCheckValid(baCheckTime: Long?): Boolean {
         if (baCheckTime == null || baCheckTime <= 0L) return false
-        val elapsed = System.currentTimeMillis() - baCheckTime
+        val elapsed = clock.nowMillis() - baCheckTime
         return elapsed in 0 until TWELVE_HOURS_MS
     }
 
@@ -42,7 +48,7 @@ class DutyViewModel(
     }
 
     private fun loadInitialDayRecord(): DayRecord {
-        val today = LocalDate.now(ZoneOffset.UTC).toString()
+        val today = clock.utcToday().toString()
         val validBaTime = getValidBaCheckTime()
         val isBaDone = validBaTime != null
         return DayRecord(
@@ -52,7 +58,7 @@ class DutyViewModel(
         )
     }
 
-    private val _currentUtcTime = MutableStateFlow(formatTimeUtc(System.currentTimeMillis()))
+    private val _currentUtcTime = MutableStateFlow(formatTimeUtc(clock.nowMillis()))
     val currentUtcTime = _currentUtcTime.asStateFlow()
 
     // The current state of our duty day - initialized immediately from persistent storage
@@ -65,7 +71,7 @@ class DutyViewModel(
     init {
         viewModelScope.launch {
             dutyDao.getAllRecords().collect { records ->
-                val today = LocalDate.now(ZoneOffset.UTC).toString()
+                val today = clock.utcToday().toString()
                 val todayRecord = records.find { it.date == today }
 
                 val validBaTimeFromPrefs = getValidBaCheckTime()
@@ -99,7 +105,7 @@ class DutyViewModel(
 
         viewModelScope.launch(Dispatchers.Default) {
             while (isActive) {
-                val now = System.currentTimeMillis()
+                val now = clock.nowMillis()
                 _currentUtcTime.value = formatTimeUtc(now)
 
                 // Expire BA check automatically if 12 hours have elapsed
@@ -126,7 +132,7 @@ class DutyViewModel(
     private var timerJob: Job? = null
 
     fun confirmBACheck() {
-        val now = System.currentTimeMillis()
+        val now = clock.nowMillis()
         prefs.edit().putLong("last_ba_check_time", now).commit()
 
         _dayRecord.value = _dayRecord.value.copy(
@@ -135,7 +141,7 @@ class DutyViewModel(
         )
 
         viewModelScope.launch(Dispatchers.IO) {
-            val dateToday = LocalDate.now(ZoneOffset.UTC).toString()
+            val dateToday = clock.utcToday().toString()
             val allRecords = dutyDao.getAllRecordsOnce()
             val existingRecord = allRecords.find { it.date == dateToday }
 
@@ -164,8 +170,13 @@ class DutyViewModel(
         viewModelScope.launch(Dispatchers.IO) {
 
             val allRecords = dutyDao.getAllRecordsOnce()
-            val warning = FDTLManager.getApproachingLimitWarning(allRecords)
-            val now = System.currentTimeMillis()
+            val totals = allRecords.groupBy { LocalDate.parse(it.date) }.mapValues { (_, v) -> v.sumOf { it.dayTotalSeconds } }
+            val worst = FdtlCalculator.mostSevere(FdtlCalculator.live(clock.utcToday(), FdtlCalculator.sumFrom(totals)))
+            val warning = worst?.let {
+                "${it.window.label} limit ${it.severity.name.lowercase()}: " +
+                    "${Formatters.hMm(it.consumedSeconds, roundUp = true)} / ${it.window.limitHours}:00"
+            }
+            val now = clock.nowMillis()
             val newSortie = Sortie(blockOff = now)
 
             // 1. Update local state
@@ -198,7 +209,7 @@ class DutyViewModel(
     fun handleBlockOn() {
         viewModelScope.launch(Dispatchers.IO) {
             val current = _dayRecord.value
-            val now = System.currentTimeMillis()
+            val now = clock.nowMillis()
 
             // 1. Close the active sortie
             val updatedSorties = current.sorties.map {
@@ -233,7 +244,7 @@ class DutyViewModel(
             while (isActive) {
                 val activeSortie = _dayRecord.value.sorties.find { it.blockOn == null }
                 activeSortie?.let {
-                    _elapsedSeconds.value = (System.currentTimeMillis() - it.blockOff) / 1000
+                    _elapsedSeconds.value = (clock.nowMillis() - it.blockOff) / 1000
                 }
                 delay(1000)
             }
