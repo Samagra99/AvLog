@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.samtech.avlog.duty.DutyViewModel
+import com.samtech.avlog.licenses.LicenseViewModel
+import com.samtech.avlog.records.RecordsViewModel
 
 /** One factory for every view model, backed by the [AppContainer]. */
 object AvLogViewModels {
@@ -11,8 +14,10 @@ object AvLogViewModels {
         get() = (this[APPLICATION_KEY] as AvLogApp).container
 
     val Factory = viewModelFactory {
-        initializer { DutyViewModel(container.database.dutyDao(), container.app, container.clock) }
-        initializer { RecordsViewModel(container.database.dutyDao(), container.clock) }
-        initializer { LicenseViewModel(container.database.licenseDao()) }
+        initializer { DutyViewModel(container.dutyRepository, container.clock) }
+        initializer {
+            RecordsViewModel(container.dutyRepository, container.csvExporter, container.backupManager, container.clock)
+        }
+        initializer { LicenseViewModel(container.licenseRepository, container.clock) }
     }
 }

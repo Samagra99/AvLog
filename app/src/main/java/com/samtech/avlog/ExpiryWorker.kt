@@ -1,55 +1,30 @@
 package com.samtech.avlog
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.Context
-import android.os.Build
-import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
-import java.time.temporal.ChronoUnit
+import com.samtech.avlog.core.localToday
+import com.samtech.avlog.licenses.ExpiryEvaluator
+import com.samtech.avlog.licenses.ExpiryNotifications
 
+/**
+ * Daily license check. Kept in this package: WorkManager persists the worker's class name, so moving it
+ * would break work already enqueued on existing installs.
+ */
 class ExpiryWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
-        val database = applicationContext.appContainer.database
-        val licenses = database.licenseDao().getAllLicensesSync()
+        val container = applicationContext.appContainer
+        val dao = container.database.licenseDao()
+        val today = container.clock.localToday()
 
-        licenses.forEach { license ->
-            val daysLeft = calculateDays(license.expiryDate)
-            if (daysLeft in listOf(30L, 7L, 1L, 0L)) {
-                sendNotification(license.name, daysLeft)
+        dao.getAll().forEach { license ->
+            val threshold = ExpiryEvaluator.evaluate(license, today) ?: return@forEach
+            val daysLeft = ExpiryEvaluator.daysLeft(license.expiryDate, today)
+            // Only record the threshold if the user actually saw it; otherwise catch up once enabled.
+            if (ExpiryNotifications.notify(applicationContext, license, daysLeft)) {
+                dao.setLastNotifiedThreshold(license.id, threshold)
             }
         }
         return Result.success()
-    }
-
-    private fun calculateDays(expiryMillis: Long): Long {
-        val expiry = Instant.ofEpochMilli(expiryMillis).atZone(ZoneId.systemDefault()).toLocalDate()
-        val today = LocalDate.now()
-        return ChronoUnit.DAYS.between(today, expiry)
-    }
-
-    private fun sendNotification(name: String, days: Long) {
-        val channelId = "license_expiry"
-        val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-        // 1. Create Channel (Required for Android 8+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, "License Alerts", NotificationManager.IMPORTANCE_HIGH)
-            notificationManager.createNotificationChannel(channel)
-        }
-
-        // 2. Build and Post
-        val notification = NotificationCompat.Builder(applicationContext, channelId)
-            .setContentTitle("Qualification Alert")
-            .setContentText("$name expires in $days days!")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .build()
-
-        notificationManager.notify(name.hashCode(), notification)
     }
 }
