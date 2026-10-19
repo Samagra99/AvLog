@@ -17,7 +17,8 @@ data class BlockInterval(val start: Long, val end: Long)
  * - Live mode: [consumedSeconds] covers the window ending now (calendar: the N days ending on and including
  *   today; rolling: the last 24 h).
  * - Planning mode: [consumedSeconds] covers what precedes the planned date (calendar: the N-1 days before it;
- *   rolling: the 24 h before 00:00Z of it), so [remainingSeconds] is what can still be flown that day.
+ *   rolling: the 24 h ending now if the date is today, else the 24 h before 00:00Z of it), so
+ *   [remainingSeconds] is what can still be flown that day.
  */
 data class FdtlStatus(
     val window: FdtlWindow,
@@ -79,16 +80,22 @@ object FdtlCalculator {
         }
     }
 
+    /**
+     * Rolling windows end at [now] when [plannedDate] is today (so planning matches the live view), otherwise
+     * at 00:00Z of the planned date.
+     */
     fun planning(
         plannedDate: LocalDate,
+        now: Instant,
         sumDays: (DateRange) -> Long,
         sumRolling: (Long, Long) -> Long,
         windows: List<FdtlWindow> = FdtlLimits.windows,
     ): List<FdtlStatus> {
-        val dayStart = plannedDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        val isToday = plannedDate == now.atZone(ZoneOffset.UTC).toLocalDate()
+        val rollingEnd = if (isToday) now.toEpochMilli() else plannedDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
         return windows.map { w ->
             val consumed = if (w.isRolling) {
-                sumRolling(dayStart - w.rollingHours * 3_600_000L, dayStart)
+                sumRolling(rollingEnd - w.rollingHours * 3_600_000L, rollingEnd)
             } else {
                 sumDays(planningRange(w, plannedDate))
             }

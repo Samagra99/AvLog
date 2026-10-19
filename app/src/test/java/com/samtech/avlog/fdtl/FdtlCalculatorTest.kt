@@ -57,7 +57,7 @@ class FdtlCalculatorTest {
         val sum = FdtlCalculator.sumFrom(totals)
 
         val live = FdtlCalculator.live(now, sum, noRolling, windows)
-        val plan = FdtlCalculator.planning(today, sum, noRolling, windows)
+        val plan = FdtlCalculator.planning(today, now, sum, noRolling, windows)
         live.zip(plan).forEach { (l, p) ->
             assertEquals(l.window, p.window)
             assertEquals(l.consumedSeconds, p.consumedSeconds + totals.getValue(today))
@@ -95,9 +95,21 @@ class FdtlCalculatorTest {
             BlockInterval(t("2026-10-19T20:00:00Z"), t("2026-10-19T23:00:00Z")), // 3h, inside
             BlockInterval(t("2026-10-18T22:00:00Z"), t("2026-10-19T01:00:00Z")), // 1h inside (00:00-01:00 on the 19th)
         )
-        val s = FdtlCalculator.planning(LocalDate.of(2026, 10, 20), { 0L }, FdtlCalculator.rollingFrom(intervals), listOf(w24h)).single()
+        val s = FdtlCalculator.planning(LocalDate.of(2026, 10, 20), now, { 0L }, FdtlCalculator.rollingFrom(intervals), listOf(w24h)).single()
         assertEquals(h(4.0), s.consumedSeconds)
         assertEquals(h(7.0), s.remainingSeconds)
+    }
+
+    @Test
+    fun `planning today matches the live 24h window`() {
+        // Same situation as the user's report: a long sortie yesterday, nothing yet today.
+        val intervals = listOf(BlockInterval(t("2026-10-18T03:00:00Z"), t("2026-10-18T18:42:00Z")))
+        val now19 = Instant.parse("2026-10-19T08:30:00Z")
+        val rolling = FdtlCalculator.rollingFrom(intervals)
+        val live = FdtlCalculator.live(now19, { 0L }, rolling, listOf(w24h)).single()
+        val plan = FdtlCalculator.planning(LocalDate.of(2026, 10, 19), now19, { 0L }, rolling, listOf(w24h)).single()
+        assertEquals(live.consumedSeconds, plan.consumedSeconds)
+        assertEquals(h(10.2), live.consumedSeconds) // 08:30 -> 18:42
     }
 
     @Test

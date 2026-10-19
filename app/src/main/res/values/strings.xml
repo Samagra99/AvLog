@@ -42,7 +42,7 @@
     <string name="records_title">Flight Records</string>
     <string name="cumulative_title">Cumulative flight time (UTC)</string>
     <string name="planning_for">Planning: %1$s</string>
-    <string name="planning_explainer">Hours left to fly on the planned date, after flying in the days before it (24H: the 24 hours before 00:00Z).</string>
+    <string name="planning_explainer">Hours left to fly on the planned date, after flying in the days before it (24H: the last 24 hours if planning today, otherwise the 24 hours before 00:00Z).</string>
     <string name="plan">Plan</string>
     <string name="change_planning_date">Change planning date</string>
     <string name="no_records">No records yet</string>

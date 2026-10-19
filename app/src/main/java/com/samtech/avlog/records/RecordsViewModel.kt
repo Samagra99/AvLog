@@ -72,7 +72,7 @@ class RecordsViewModel(
     ) { totals, intervals, planning, date, now ->
         val sumDays = FdtlCalculator.sumFrom(totals)
         val sumRolling = FdtlCalculator.rollingFrom(intervals)
-        if (planning) FdtlCalculator.planning(date, sumDays, sumRolling) else FdtlCalculator.live(now, sumDays, sumRolling)
+        if (planning) FdtlCalculator.planning(date, now, sumDays, sumRolling) else FdtlCalculator.live(now, sumDays, sumRolling)
     }
 
     val uiState: StateFlow<RecordsUiState> = combine(

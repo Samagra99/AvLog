@@ -61,7 +61,7 @@ there is no destructive fallback.
 | FDTL windows | 24H (rolling) and 7D / 14D / 28D / 90D / 365D (calendar), all shown on the Records tab. |
 | Calendar window (live) | N consecutive UTC days ending on and including today. |
 | Rolling 24H (live) | Block time overlapping the last 24 hours; a sortie partly inside counts partly. Re-evaluated every minute. |
-| FDTL planning | Limit minus flying before the planned date (calendar: the N-1 days before it; 24H: the 24 h before 00:00Z) = what can be flown that day. |
+| FDTL planning | Limit minus flying before the planned date (calendar: the N-1 days before it; 24H: the last 24 h when planning today, else the 24 h before 00:00Z) = what can be flown that day. |
 | Warning | Approaching at 90 % of any window, exceeded at 100 %; the most severe window is shown. |
 | Durations | Completed sorties only, each floored at 0; consumed time rounds up, remaining rounds down. |
 | BA check | Valid for 12 hours from confirmation (also across UTC midnight). |
