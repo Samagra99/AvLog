@@ -1,17 +1,23 @@
 package com.samtech.avlog.fdtl
 
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 
 enum class Severity { OK, APPROACHING, EXCEEDED }
 
 /** Inclusive range of UTC dates. */
 data class DateRange(val from: LocalDate, val to: LocalDate)
 
+/** A completed sortie as epoch millis (Block Off, Block On). */
+data class BlockInterval(val start: Long, val end: Long)
+
 /**
  * Result of evaluating one window.
- * - Live mode: [consumedSeconds] covers the N days ending on and including the evaluated date.
- * - Planning mode: [consumedSeconds] covers the N-1 days before the planned date, so [remainingSeconds]
- *   is what can still be flown on the planned date itself.
+ * - Live mode: [consumedSeconds] covers the window ending now (calendar: the N days ending on and including
+ *   today; rolling: the last 24 h).
+ * - Planning mode: [consumedSeconds] covers what precedes the planned date (calendar: the N-1 days before it;
+ *   rolling: the 24 h before 00:00Z of it), so [remainingSeconds] is what can still be flown that day.
  */
 data class FdtlStatus(
     val window: FdtlWindow,
@@ -39,6 +45,10 @@ object FdtlCalculator {
     fun planningRange(window: FdtlWindow, plannedDate: LocalDate): DateRange =
         DateRange(plannedDate.minusDays(window.days - 1L), plannedDate.minusDays(1))
 
+    /** Seconds of [intervals] inside [from, to) (epoch millis). Partial overlaps count partially. */
+    fun overlapSeconds(intervals: List<BlockInterval>, from: Long, to: Long): Long =
+        intervals.sumOf { iv -> ((minOf(iv.end, to) - maxOf(iv.start, from)) / 1000L).coerceAtLeast(0L) }
+
     fun severity(consumedSeconds: Long, limitSeconds: Long, warningFraction: Double = FdtlLimits.WARNING_FRACTION): Severity =
         when {
             consumedSeconds >= limitSeconds -> Severity.EXCEEDED
@@ -47,25 +57,43 @@ object FdtlCalculator {
         }
 
     /**
-     * @param sumSeconds total completed block seconds for an inclusive date range. Live and planning
-     * modes both go through this single function so they cannot disagree.
+     * @param sumDays total completed block seconds for an inclusive UTC date range.
+     * @param sumRolling completed block seconds overlapping [from, to) in epoch millis.
+     * Live and planning modes go through the same two functions so they cannot disagree.
      */
     fun live(
-        date: LocalDate,
-        sumSeconds: (DateRange) -> Long,
+        now: Instant,
+        sumDays: (DateRange) -> Long,
+        sumRolling: (Long, Long) -> Long,
         windows: List<FdtlWindow> = FdtlLimits.windows,
-    ): List<FdtlStatus> = windows.map { w ->
-        val consumed = sumSeconds(liveRange(w, date))
-        FdtlStatus(w, consumed, severity(consumed, w.limitSeconds))
+    ): List<FdtlStatus> {
+        val today = now.atZone(ZoneOffset.UTC).toLocalDate()
+        val nowMs = now.toEpochMilli()
+        return windows.map { w ->
+            val consumed = if (w.isRolling) {
+                sumRolling(nowMs - w.rollingHours * 3_600_000L, nowMs)
+            } else {
+                sumDays(liveRange(w, today))
+            }
+            FdtlStatus(w, consumed, severity(consumed, w.limitSeconds))
+        }
     }
 
     fun planning(
         plannedDate: LocalDate,
-        sumSeconds: (DateRange) -> Long,
+        sumDays: (DateRange) -> Long,
+        sumRolling: (Long, Long) -> Long,
         windows: List<FdtlWindow> = FdtlLimits.windows,
-    ): List<FdtlStatus> = windows.map { w ->
-        val consumed = sumSeconds(planningRange(w, plannedDate))
-        FdtlStatus(w, consumed, severity(consumed, w.limitSeconds))
+    ): List<FdtlStatus> {
+        val dayStart = plannedDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        return windows.map { w ->
+            val consumed = if (w.isRolling) {
+                sumRolling(dayStart - w.rollingHours * 3_600_000L, dayStart)
+            } else {
+                sumDays(planningRange(w, plannedDate))
+            }
+            FdtlStatus(w, consumed, severity(consumed, w.limitSeconds))
+        }
     }
 
     /**
@@ -78,9 +106,14 @@ object FdtlCalculator {
             .sortedWith(compareByDescending<FdtlStatus> { it.severity.ordinal }.thenBy { it.marginSeconds })
             .firstOrNull()
 
-    /** Builds a [sumSeconds] function from per-day totals. */
+    /** Builds a calendar [sumDays] function from per-day totals. */
     fun sumFrom(dailyTotals: Map<LocalDate, Long>): (DateRange) -> Long = { range ->
         if (range.to < range.from) 0L
         else dailyTotals.entries.sumOf { (d, s) -> if (d >= range.from && d <= range.to) s else 0L }
+    }
+
+    /** Builds a rolling [sumRolling] function from completed sorties. */
+    fun rollingFrom(intervals: List<BlockInterval>): (Long, Long) -> Long = { from, to ->
+        overlapSeconds(intervals, from, to)
     }
 }

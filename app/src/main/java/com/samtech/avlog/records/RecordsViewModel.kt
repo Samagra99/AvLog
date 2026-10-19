@@ -4,7 +4,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.samtech.avlog.core.Clock
-import com.samtech.avlog.core.dateTicks
+import com.samtech.avlog.core.minuteTicks
 import com.samtech.avlog.core.nowMillis
 import com.samtech.avlog.core.utcToday
 import com.samtech.avlog.data.BackupData
@@ -67,9 +67,12 @@ class RecordsViewModel(
     val events = _events.receiveAsFlow()
 
     /** P7.3: one flow; the Switch and the date picker only re-run the cheap in-memory sum. */
-    private val stats = combine(repository.dailyTotals, planningMode, planningDate, clock.dateTicks()) { totals, planning, date, today ->
-        val sum = FdtlCalculator.sumFrom(totals)
-        if (planning) FdtlCalculator.planning(date, sum) else FdtlCalculator.live(today, sum)
+    private val stats = combine(
+        repository.dailyTotals, repository.completedIntervals, planningMode, planningDate, clock.minuteTicks(),
+    ) { totals, intervals, planning, date, now ->
+        val sumDays = FdtlCalculator.sumFrom(totals)
+        val sumRolling = FdtlCalculator.rollingFrom(intervals)
+        if (planning) FdtlCalculator.planning(date, sumDays, sumRolling) else FdtlCalculator.live(now, sumDays, sumRolling)
     }
 
     val uiState: StateFlow<RecordsUiState> = combine(

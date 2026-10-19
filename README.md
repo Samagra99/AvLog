@@ -4,9 +4,9 @@ A personal flight-duty logbook for Android: block times per sortie, a pre-flight
 flight-time (FDTL) tracking with planning, and license/rating expiry alerts.
 
 > [!WARNING]
-> The FDTL limits and window definition in `fdtl/FdtlLimits.kt` are **unverified** and were carried
-> over from the original app. Confirm them against the current CAR before relying on the app, and record
-> the clause there. AvLog is an aid, not an approved record-keeping system.
+> FDTL limits live only in `fdtl/FdtlLimits.kt`: 24 h / 11 h, plus the CAR "Maximum Cumulative Flight
+> Time Limitations" table (sub-paras 9.1-9.5: 7 d 35 h, 14 d 65 h, 28 d 100 h, 90 d 300 h, 365 d 1000 h).
+> Record the CAR revision there. AvLog is an aid, not an approved record-keeping system.
 
 ## Build
 
@@ -58,8 +58,10 @@ there is no destructive fallback.
 | Rule | Behaviour |
 | --- | --- |
 | Day of a sortie | UTC date of Block Off. A flight crossing 00:00Z stays on the day it started. |
-| FDTL window (live) | N consecutive UTC days ending on and including today. |
-| FDTL planning | Limit minus flying in the N-1 days before the planned date = what can be flown that day. |
+| FDTL windows | 24H (rolling) and 7D / 14D / 28D / 90D / 365D (calendar), all shown on the Records tab. |
+| Calendar window (live) | N consecutive UTC days ending on and including today. |
+| Rolling 24H (live) | Block time overlapping the last 24 hours; a sortie partly inside counts partly. Re-evaluated every minute. |
+| FDTL planning | Limit minus flying before the planned date (calendar: the N-1 days before it; 24H: the 24 h before 00:00Z) = what can be flown that day. |
 | Warning | Approaching at 90 % of any window, exceeded at 100 %; the most severe window is shown. |
 | Durations | Completed sorties only, each floored at 0; consumed time rounds up, remaining rounds down. |
 | BA check | Valid for 12 hours from confirmation (also across UTC midnight). |

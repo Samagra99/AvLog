@@ -1,36 +1,45 @@
 package com.samtech.avlog.fdtl
 
 /**
- * A cumulative flight-time window: at most [limitHours] of block time in any [days] consecutive UTC days.
+ * A cumulative flight-time window: at most [limitHours] of block time either in any [days] consecutive UTC
+ * days (calendar window) or in any [rollingHours] consecutive hours (rolling window). Exactly one of
+ * [days] / [rollingHours] is set.
  */
-data class FdtlWindow(val days: Int, val limitHours: Int) {
+data class FdtlWindow(val limitHours: Int, val days: Int = 0, val rollingHours: Int = 0) {
+    init {
+        require((days > 0) xor (rollingHours > 0)) { "Set exactly one of days or rollingHours" }
+    }
+
+    val isRolling: Boolean get() = rollingHours > 0
     val limitSeconds: Long get() = limitHours * 3600L
-    val label: String get() = "${days}D"
+
+    /** Stable identifier and short label, e.g. "24H", "7D". */
+    val key: String get() = if (isRolling) "${rollingHours}H" else "${days}D"
 }
 
 /**
  * The ONLY place FDTL limits are defined.
  *
- * SOURCE: UNVERIFIED. These are the values that were hard-coded in the original app. They have NOT been
- * checked against the current CAR. Before relying on this app, confirm each
- * number and the window definition below against the CAR revision you operate under, and record the
- * clause and revision here.
+ * Sources:
+ * - 7 / 14 / 28 / 90 / 365 days: CAR "Maximum Cumulative Flight Time Limitations", sub-paras 9.1-9.5
+ *   (35 / 65 / 100 / 300 / 1000 h), confirmed by the user on 19 Oct 2026. Record the CAR revision here.
+ * - 24 hours: 11 h, as specified by the user (not part of the 9.1-9.5 table).
  *
- * Window definition used throughout the app: N consecutive UTC days ending on, and including, the
- * evaluated date. A sortie belongs to the UTC date of its Block Off.
+ * Window definitions used throughout the app:
+ * - Calendar windows: N consecutive UTC days ending on, and including, the evaluated date. A sortie belongs
+ *   to the UTC date of its Block Off.
+ * - Rolling 24 h: block time overlapping the 24 hours ending now (sorties partly inside count partly).
  */
 object FdtlLimits {
-    const val VERIFIED = false
-    const val SOURCE_NOTE = "Unverified: carried over from the original app; confirm against the current CAR."
-
     /** Fraction of a limit at which a window is reported as approaching (decision D3). */
     const val WARNING_FRACTION = 0.9
 
     val windows: List<FdtlWindow> = listOf(
-        FdtlWindow(days = 7, limitHours = 35),
-        FdtlWindow(days = 14, limitHours = 65),
-        FdtlWindow(days = 28, limitHours = 100),
-        FdtlWindow(days = 90, limitHours = 300),
-        FdtlWindow(days = 365, limitHours = 1000),
+        FdtlWindow(limitHours = 11, rollingHours = 24),
+        FdtlWindow(limitHours = 35, days = 7),     // 9.1
+        FdtlWindow(limitHours = 65, days = 14),    // 9.2
+        FdtlWindow(limitHours = 100, days = 28),   // 9.3
+        FdtlWindow(limitHours = 300, days = 90),   // 9.4
+        FdtlWindow(limitHours = 1000, days = 365), // 9.5
     )
 }

@@ -28,9 +28,12 @@
     <string name="set_block_on_time">Set Block On time</string>
 
     <!-- FDTL -->
-    <string name="fdtl_window_label">%1$sD</string>
-    <string name="fdtl_exceeded">%1$s-day limit EXCEEDED: %2$s of %3$s</string>
-    <string name="fdtl_approaching">%1$s-day limit approaching: %2$s of %3$s (%4$s left)</string>
+    <string name="fdtl_label_days">%1$sD</string>
+    <string name="fdtl_label_hours">%1$sH</string>
+    <string name="fdtl_desc_days">%1$s-day</string>
+    <string name="fdtl_desc_hours">%1$s-hour</string>
+    <string name="fdtl_exceeded">%1$s limit EXCEEDED: %2$s of %3$s</string>
+    <string name="fdtl_approaching">%1$s limit approaching: %2$s of %3$s (%4$s left)</string>
     <string name="fdtl_of_limit">of %1$s</string>
     <string name="fdtl_left">left</string>
     <string name="fdtl_used_before">used %1$s</string>
@@ -39,7 +42,7 @@
     <string name="records_title">Flight Records</string>
     <string name="cumulative_title">Cumulative flight time (UTC)</string>
     <string name="planning_for">Planning: %1$s</string>
-    <string name="planning_explainer">Hours left to fly on the planned date, after flying in the days before it.</string>
+    <string name="planning_explainer">Hours left to fly on the planned date, after flying in the days before it (24H: the 24 hours before 00:00Z).</string>
     <string name="plan">Plan</string>
     <string name="change_planning_date">Change planning date</string>
     <string name="no_records">No records yet</string>

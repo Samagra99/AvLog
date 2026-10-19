@@ -8,6 +8,7 @@ import com.samtech.avlog.R
 import com.samtech.avlog.core.Formatters
 import com.samtech.avlog.data.EditResult
 import com.samtech.avlog.fdtl.FdtlStatus
+import com.samtech.avlog.fdtl.FdtlWindow
 import com.samtech.avlog.fdtl.Severity
 
 fun Resources.editResultMessage(result: EditResult): String = getString(
@@ -26,13 +27,21 @@ fun Resources.fdtlWarningMessage(status: FdtlStatus): String {
     val consumed = Formatters.hMm(status.consumedSeconds, roundUp = true)
     val limit = Formatters.hMm(status.limitSeconds, roundUp = false)
     return if (status.severity == Severity.EXCEEDED) {
-        getString(R.string.fdtl_exceeded, Formatters.num(status.window.days), consumed, limit)
+        getString(R.string.fdtl_exceeded, windowDescription(status.window), consumed, limit)
     } else {
-        getString(R.string.fdtl_approaching, Formatters.num(status.window.days), consumed, limit,
+        getString(R.string.fdtl_approaching, windowDescription(status.window), consumed, limit,
             Formatters.hMm(status.remainingSeconds, roundUp = false))
     }
 }
 
+/** "24-hour" / "7-day", for sentences. */
+fun Resources.windowDescription(w: FdtlWindow): String =
+    if (w.isRolling) getString(R.string.fdtl_desc_hours, Formatters.num(w.rollingHours))
+    else getString(R.string.fdtl_desc_days, Formatters.num(w.days))
+
+/** "24H" / "7D", for dashboard tiles. */
 @Composable
 @ReadOnlyComposable
-fun windowLabel(days: Int): String = stringResource(R.string.fdtl_window_label, Formatters.num(days))
+fun windowLabel(w: FdtlWindow): String =
+    if (w.isRolling) stringResource(R.string.fdtl_label_hours, Formatters.num(w.rollingHours))
+    else stringResource(R.string.fdtl_label_days, Formatters.num(w.days))

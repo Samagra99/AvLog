@@ -39,6 +39,15 @@ fun Clock.secondTicks(): Flow<Instant> = flow {
     }
 }
 
+/** Emits now, then on every wall-clock minute boundary. Used by the rolling 24 h FDTL window. */
+fun Clock.minuteTicks(): Flow<Instant> = flow {
+    while (true) {
+        val now = now()
+        emit(now)
+        delay(60_000L - Math.floorMod(now.toEpochMilli(), 60_000L))
+    }
+}
+
 /**
  * "DayTicker": emits the current date in [zone] and again whenever it changes. Re-checks at least once a
  * minute because coroutine delays don't advance while the device is in deep sleep.

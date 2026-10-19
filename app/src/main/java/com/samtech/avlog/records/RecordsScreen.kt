@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
@@ -50,6 +49,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -71,6 +71,7 @@ import com.samtech.avlog.fdtl.FdtlCalculator
 import com.samtech.avlog.fdtl.FdtlStatus
 import com.samtech.avlog.ui.SortieEditDialog
 import com.samtech.avlog.ui.editResultMessage
+import com.samtech.avlog.ui.windowLabel
 import com.samtech.avlog.ui.theme.AvLogTheme
 import com.samtech.avlog.ui.theme.severityColors
 import java.time.Instant
@@ -284,42 +285,56 @@ fun RecordsScreen(viewModel: RecordsViewModel, snackbarHostState: SnackbarHostSt
 /**
  * P3.4: severity always comes from the consumed fraction. Live mode shows consumed (rounded up);
  * planning mode shows what is left for the planned day (rounded down) plus what was used before it.
+ * Laid out as a fixed 3-column grid so every window is visible without horizontal scrolling.
  */
 @Composable
 fun FdtlDashboard(stats: List<FdtlStatus>, planning: Boolean) {
-    LazyRow(
+    Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items(stats, key = { it.window.days }) { stat ->
-            val colors = severityColors(stat.severity)
-            Card(
-                modifier = Modifier.width(116.dp),
-                colors = CardDefaults.cardColors(containerColor = colors.container, contentColor = colors.onContainer)
-            ) {
-                Column(modifier = Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(stringResource(R.string.fdtl_window_label, Formatters.num(stat.window.days)), style = MaterialTheme.typography.labelMedium)
-                    CircularProgressIndicator(
-                        progress = { stat.fraction.coerceIn(0f, 1f) },
-                        modifier = Modifier.size(40.dp).padding(vertical = 4.dp),
-                        color = colors.accent,
-                        strokeWidth = 4.dp,
-                    )
-                    if (planning) {
-                        Text(Formatters.hMm(stat.remainingSeconds, roundUp = false), fontWeight = FontWeight.Bold)
-                        Text(stringResource(R.string.fdtl_left), style = MaterialTheme.typography.labelSmall)
-                        Text(
-                            stringResource(R.string.fdtl_used_before, Formatters.hMm(stat.consumedSeconds, roundUp = true)),
-                            style = MaterialTheme.typography.labelSmall,
-                        )
-                    } else {
-                        Text(Formatters.hMm(stat.consumedSeconds, roundUp = true), fontWeight = FontWeight.Bold)
-                        Text(
-                            stringResource(R.string.fdtl_of_limit, Formatters.hMm(stat.limitSeconds, roundUp = false)),
-                            style = MaterialTheme.typography.labelSmall,
-                        )
-                    }
+        stats.chunked(3).forEach { rowStats ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                rowStats.forEach { stat ->
+                    key(stat.window.key) { FdtlTile(stat, planning, Modifier.weight(1f)) }
                 }
+                repeat(3 - rowStats.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FdtlTile(stat: FdtlStatus, planning: Boolean, modifier: Modifier) {
+    val colors = severityColors(stat.severity)
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = colors.container, contentColor = colors.onContainer)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp, horizontal = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(windowLabel(stat.window), style = MaterialTheme.typography.labelMedium)
+            CircularProgressIndicator(
+                progress = { stat.fraction.coerceIn(0f, 1f) },
+                modifier = Modifier.size(36.dp).padding(vertical = 4.dp),
+                color = colors.accent,
+                strokeWidth = 4.dp,
+            )
+            if (planning) {
+                Text(Formatters.hMm(stat.remainingSeconds, roundUp = false), fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.fdtl_left), style = MaterialTheme.typography.labelSmall)
+                Text(
+                    stringResource(R.string.fdtl_used_before, Formatters.hMm(stat.consumedSeconds, roundUp = true)),
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            } else {
+                Text(Formatters.hMm(stat.consumedSeconds, roundUp = true), fontWeight = FontWeight.Bold)
+                Text(
+                    stringResource(R.string.fdtl_of_limit, Formatters.hMm(stat.limitSeconds, roundUp = false)),
+                    style = MaterialTheme.typography.labelSmall,
+                )
             }
         }
     }

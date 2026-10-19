@@ -1,9 +1,10 @@
 package com.samtech.avlog.data
 
 import com.samtech.avlog.core.Clock
-import com.samtech.avlog.core.dateTicks
+import com.samtech.avlog.core.minuteTicks
 import com.samtech.avlog.core.nowMillis
 import com.samtech.avlog.core.utcToday
+import com.samtech.avlog.fdtl.BlockInterval
 import com.samtech.avlog.fdtl.FdtlCalculator
 import com.samtech.avlog.fdtl.FdtlLimits
 import com.samtech.avlog.fdtl.FdtlStatus
@@ -46,10 +47,14 @@ class DutyRepository(private val dao: DutyDao, private val clock: Clock) {
             .sortedByDescending { it.date }
     }
 
-    /** Live FDTL statuses; re-evaluated when data changes or the UTC date rolls over. */
-    val liveStatuses: Flow<List<FdtlStatus>> = combine(dailyTotals, clock.dateTicks()) { totals, today ->
-        FdtlCalculator.live(today, FdtlCalculator.sumFrom(totals))
-    }
+    /** Completed sorties as intervals, for the rolling 24 h window. */
+    val completedIntervals: Flow<List<BlockInterval>> = dao.observeAllSorties().map { it.toIntervals() }
+
+    /** Live FDTL statuses; re-evaluated when data changes and every minute (rolling window, UTC rollover). */
+    val liveStatuses: Flow<List<FdtlStatus>> =
+        combine(dailyTotals, completedIntervals, clock.minuteTicks()) { totals, intervals, now ->
+            FdtlCalculator.live(now, FdtlCalculator.sumFrom(totals), FdtlCalculator.rollingFrom(intervals))
+        }
 
     suspend fun getDayLogs(): List<DayLog> {
         val baByDate = dao.getDutyDays().associate { it.date to it.baCheckTime }
@@ -60,12 +65,14 @@ class DutyRepository(private val dao: DutyDao, private val clock: Clock) {
 
     /** One-shot live evaluation straight from SQL, used at Block Off. */
     suspend fun liveStatusesNow(): List<FdtlStatus> {
+        val now = clock.now()
         val today = clock.utcToday()
-        val sums = FdtlLimits.windows.associate { w ->
+        val sums = FdtlLimits.windows.filterNot { it.isRolling }.associate { w ->
             val r = FdtlCalculator.liveRange(w, today)
             r to dao.sumSecondsBetween(r.from, r.to)
         }
-        return FdtlCalculator.live(today, { range -> sums.getValue(range) })
+        val intervals = dao.getAllSorties().toIntervals()
+        return FdtlCalculator.live(now, { range -> sums.getValue(range) }, FdtlCalculator.rollingFrom(intervals))
     }
 
     suspend fun startSortie(): StartResult = dao.startSortie(clock.nowMillis())
@@ -99,6 +106,9 @@ class DutyRepository(private val dao: DutyDao, private val clock: Clock) {
         }
     }
 }
+
+private fun List<SortieEntity>.toIntervals(): List<BlockInterval> =
+    mapNotNull { s -> s.blockOn?.let { BlockInterval(s.blockOff, it) } }
 
 class LicenseRepository(private val dao: LicenseDao) {
     val licenses: Flow<List<LicenseEntity>> = dao.observeAll()
